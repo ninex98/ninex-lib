@@ -8,6 +8,7 @@
 - 增强的服务层基类 (LibService)
 - 扩展的模型基类 (LibModel)
 - 命令行工具基类 (LibCommand)
+- 队列基类 (LibJob)
 - HTTP 客户端封装 (LibClient)
 - 通用的辅助特征 (Traits)
 - 标准化的响应格式 (ResponseTrait)
