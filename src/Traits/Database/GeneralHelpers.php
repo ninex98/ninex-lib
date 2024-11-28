@@ -15,7 +15,7 @@ trait GeneralHelpers
      *
      * @return string
      */
-    protected function setModel(): string
+    public function setModel(): string
     {
         $classNameArr = explode('\\', get_class($this));
         $modelName = substr(Arr::last($classNameArr), 0, -7);
@@ -40,7 +40,7 @@ trait GeneralHelpers
     /**
      * 获取查询构造器
      */
-    protected function query(): Builder
+    public function query(): Builder
     {
         return $this->model()->newQuery();
     }
@@ -53,7 +53,7 @@ trait GeneralHelpers
      * @param array $with 关联关系
      * @param Builder|null $builder 查询构造器
      */
-    protected function find(
+    public function find(
         string   $id,
         ?string  $message = null,
         array    $with = [],
@@ -82,7 +82,7 @@ trait GeneralHelpers
      * @param array $with 关联关系
      * @param Builder|null $builder 查询构造器
      */
-    protected function findWhere(
+    public function findWhere(
         array    $conditions,
         ?string  $message = null,
         array    $with = [],
@@ -113,7 +113,7 @@ trait GeneralHelpers
      * @param string|null $message 错误信息
      * @param Builder|null $builder 查询构造器
      */
-    protected function create(
+    public function create(
         array    $data,
         ?string  $message = null,
         ?Builder $builder = null
@@ -142,7 +142,7 @@ trait GeneralHelpers
      * @param Builder|null $builder QueryBuilder
      * @return Model
      */
-    protected function update(
+    public function update(
         string   $id,
         array    $data,
         ?string  $message = null,
@@ -169,7 +169,7 @@ trait GeneralHelpers
      * @param Builder|null $builder
      * @return bool
      */
-    protected function delete(
+    public function delete(
         string   $id,
         ?string  $message = null,
         ?Builder $builder = null
@@ -231,7 +231,7 @@ trait GeneralHelpers
      * @return Model
      * @throws \Exception
      */
-    protected function validateStore(array $data, string $message = '')
+    public function validateStore(array $data, string $message = '')
     {
         $this->validateForm($data);
 
@@ -244,7 +244,7 @@ trait GeneralHelpers
      * @param $fields
      * @throws \Exception
      */
-    protected function validateUpdate(string $id, array $fields, string $message = '')
+    public function validateUpdate(string $id, array $fields, string $message = '')
     {
         $this->validateForm($fields, $id);
 
@@ -254,7 +254,7 @@ trait GeneralHelpers
     /**
      * 表单验证
      */
-    protected function validateForm(array $data, ?string $id = null): void
+    public function validateForm(array $data, ?string $id = null): void
     {
         // 子类实现具体验证逻辑
     }
@@ -263,7 +263,7 @@ trait GeneralHelpers
      * 分页查询
      */
 
-    protected function paginate(
+    public function paginate(
         array    $conditions = [],
         array    $with = [],
         array    $orderBy = ['id' => 'desc'],
@@ -312,7 +312,7 @@ trait GeneralHelpers
     /**
      * 批量插入（智能分块）
      */
-    protected function batchInsert(array $items, int $chunkSize = 100): bool
+    public function batchInsert(array $items, int $chunkSize = 100): bool
     {
         if (empty($items)) {
             return false;
@@ -330,33 +330,33 @@ trait GeneralHelpers
     /**
      * @param Builder $query
      */
-    protected function scopeQuery(Builder $query, array $conditions)
+    public function scopeQuery(Builder $query, array $conditions)
     {
         foreach (array_filter(Arr::except($conditions, ['page', 'page_size'])) as $key => $value) {
             $query->where($key, $value);
         }
     }
 
-    protected function scopeWhere(Builder $query, array $conditions)
+    public function scopeWhere(Builder $query, array $conditions)
     {
         $this->scopeWhereCondition($query, $conditions, "=");
     }
 
-    protected function scopeWhereIn(Builder $query, array $conditions)
+    public function scopeWhereIn(Builder $query, array $conditions)
     {
         foreach (array_filter($conditions) as $key => $value) {
             $query->whereIn($key, $value);
         }
     }
 
-    protected function scopeWhereLike(Builder $query, array $conditions)
+    public function scopeWhereLike(Builder $query, array $conditions)
     {
         foreach (array_filter($conditions) as $key => $value) {
             $query->where($key, "like", "%{$value}%");
         }
     }
 
-    protected function scopeWhereBetween(Builder $query, array $conditions)
+    public function scopeWhereBetween(Builder $query, array $conditions)
     {
         foreach (array_filter($conditions) as $key => $value) {
             $value = is_string($value) ? explode(',', $value) : [];
@@ -367,21 +367,21 @@ trait GeneralHelpers
         }
     }
 
-    protected function scopeWhereJsonContains(Builder $query, array $conditions)
+    public function scopeWhereJsonContains(Builder $query, array $conditions)
     {
         foreach (array_filter($conditions) as $key => $value) {
             $query->whereJsonContains($key, $value);
         }
     }
 
-    protected function scopeWhereInSet(Builder $query, array $conditions)
+    public function scopeWhereInSet(Builder $query, array $conditions)
     {
         foreach (array_filter($conditions) as $key => $value) {
             $query->whereRaw('FIND_IN_SET(?, ' . $key . ')', [$value]);
         }
     }
 
-    protected function scopeWhereCondition(Builder $query, array $data, $condition)
+    public function scopeWhereCondition(Builder $query, array $data, $condition)
     {
         foreach (array_filter($data, function ($var) {
             return (($var !== null) && ($var !== ""));
@@ -393,7 +393,7 @@ trait GeneralHelpers
     /**
      * 添加高级查询条件
      */
-    protected function addAdvancedConditions(Builder $query, array $conditions): void
+    public function addAdvancedConditions(Builder $query, array $conditions): void
     {
         // 精确匹配
         if (isset($conditions['where']) && is_array($conditions['where'])) {
