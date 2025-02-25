@@ -165,7 +165,7 @@ trait ResponseTrait
         return array_merge($this->responseFormat, [
             'code' => $code,
             'message' => $message,
-            'data' => $data ?: $this->responseFormat['data'],
+            'data' => ($data||is_numeric($data)) ? $data : $this->responseFormat['data'],
         ]);
     }
 
