@@ -4,6 +4,7 @@ namespace Ninex\Lib;
 
 use Illuminate\Support\ServiceProvider;
 use Ninex\Lib\Console\InstallCommand;
+use Ninex\Lib\Support\SqlRecord;
 
 class LibServiceProvider extends ServiceProvider
 {
@@ -33,6 +34,11 @@ class LibServiceProvider extends ServiceProvider
             $this->commands([
                 InstallCommand::class,
             ]);
+        }
+
+        // 记录 sql
+        if (config('app.debug')) {
+            SqlRecord::listen();
         }
     }
 }

@@ -10,6 +10,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
+use Ninex\Lib\Support\SqlRecord;
 
 trait ResponseTrait
 {
@@ -166,7 +167,23 @@ trait ResponseTrait
             'code' => $code,
             'message' => $message,
             'data' => ($data||is_numeric($data)) ? $data : $this->responseFormat['data'],
-        ]);
+        ], $this->debug());
+    }
+
+    /**
+     * 调试信息
+     * @return array
+     */
+    protected function debug()
+    {
+        if (config('app.debug')) {
+            return [
+                'debug' => [
+                    'sql' => SqlRecord::$sql
+                ]
+            ];
+        }
+        return [];
     }
 
     /**
