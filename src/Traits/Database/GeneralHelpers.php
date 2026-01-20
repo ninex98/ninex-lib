@@ -140,6 +140,8 @@ trait GeneralHelpers
     {
         $builder = $builder ?? $this->query();
 
+        $this->saving($data);
+
         $result = $builder->create($data);
 
         if (!$result) {
@@ -148,6 +150,8 @@ trait GeneralHelpers
                 422
             );
         }
+
+        $this->saved($result);
 
         return $result;
     }
@@ -168,6 +172,9 @@ trait GeneralHelpers
         ?Builder $builder = null
     ): Model
     {
+
+        $this->saving($data,$id);
+
         $model = $this->find($id, $message, [], $builder);
 
         if (!$model->update($data)) {
@@ -176,6 +183,8 @@ trait GeneralHelpers
                 422
             );
         }
+
+        $this->saved($model);
 
         return $model;
     }
@@ -202,6 +211,8 @@ trait GeneralHelpers
                 422
             );
         }
+
+        $this->deleted($id);
 
         return true;
     }
@@ -443,6 +454,48 @@ trait GeneralHelpers
         if (isset($conditions['whereInSet']) && is_array($conditions['whereInSet'])) {
             $this->scopeWhereInSet($query, $conditions['whereInSet']);
         }
+    }
+
+    /**
+     * saving 钩子 (执行于新增/修改前)
+     *
+     * 可以通过判断 $primaryKey 是否存在来判断是新增还是修改
+     *
+     * @param $data
+     * @param $primaryKey
+     *
+     * @return void
+     */
+    public function saving(&$data, $primaryKey = '')
+    {
+
+    }
+
+    /**
+     * saved 钩子 (执行于新增/修改后)
+     *
+     * 可以通过 $isEdit 来判断是新增还是修改
+     *
+     * @param $model
+     * @param $isEdit
+     *
+     * @return void
+     */
+    public function saved($model, $isEdit = false)
+    {
+
+    }
+
+    /**
+     * deleted 钩子 (执行于删除后)
+     *
+     * @param $ids
+     *
+     * @return void
+     */
+    public function deleted($ids)
+    {
+
     }
 
 }
