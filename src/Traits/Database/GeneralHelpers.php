@@ -184,7 +184,7 @@ trait GeneralHelpers
             );
         }
 
-        $this->saved($model);
+        $this->saved($model, true);
 
         return $model;
     }
