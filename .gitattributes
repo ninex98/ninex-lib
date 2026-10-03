@@ -1,0 +1,10 @@
+/.github export-ignore
+/tests export-ignore
+/tools export-ignore
+/build export-ignore
+/phpunit.xml export-ignore
+/phpunit.laravel.xml export-ignore
+/phpunit.thinkphp.xml export-ignore
+/pint.json export-ignore
+/.gitignore export-ignore
+/.local export-ignore

@@ -1,0 +1,59 @@
+name: release
+on:
+  push:
+    tags: ['v[0-9]*', '[0-9]*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    uses: ./.github/workflows/tests.yml
+  github-release:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Validate the pushed tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          php tools/release-metadata.php "$RELEASE_TAG" > release-metadata.json
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release already exists; preserving its notes and assets."
+            exit 0
+          fi
+          args=("$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" --generate-notes)
+          if [ "$(php -r '$m=json_decode(file_get_contents("release-metadata.json"), true); echo $m["prerelease"] ? "true" : "false";')" = true ]; then
+            args+=(--prerelease)
+          fi
+          gh release create "${args[@]}"
+  packagist-sync:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Verify existing Packagist webhook synchronized the tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: php tools/check-packagist.php --tag="$RELEASE_TAG"

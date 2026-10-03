@@ -1,33 +1,37 @@
 <?php
 
 namespace Ninex\Lib\Support;
-use Illuminate\Database\Eloquent\Builder;
+
 use Illuminate\Support\Facades\DB;
 
+/** Request/job scoped collector. Bindings are deliberately excluded. */
 class SqlRecord
 {
-    public static array $sql = [];
+    private array $queries = [];
 
-    public static function listen()
+    public static function listen(): void
     {
-        try {
-            DB::getPdo();
-        } catch (\Exception $e) {
-            return;
-        }
-
         DB::listen(function ($query) {
-            $bindings = $query->bindings;
-            $sql      = $query->sql;
-
-            foreach ($bindings as $replace) {
-                $value = is_numeric($replace) ? $replace : "'" . $replace . "'";
-                $sql   = preg_replace('/\?/', $value, $sql, 1);
+            if (config('app.debug') && config('ninexlib.sql.enabled', false)) {
+                app(self::class)->record($query->sql, $query->time);
             }
-
-            $sql = sprintf('[%s ms] %s', $query->time, $sql);
-
-            self::$sql[] = $sql;
         });
+    }
+
+    public function record(string $sql, float $time): void
+    {
+        $limit = max(0, (int) config('ninexlib.sql.limit', 100));
+        if (count($this->queries) < $limit) {
+            $this->queries[] = ['sql' => $sql, 'time_ms' => $time];
+        }
+    }
+
+    public function all(): array
+    {
+        return $this->queries;
+    }
+    public function clear(): void
+    {
+        $this->queries = [];
     }
 }

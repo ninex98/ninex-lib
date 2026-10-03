@@ -6,7 +6,13 @@ return [
     | 基础配置
     |--------------------------------------------------------------------------
     */
+    'routes' => ['enabled' => true, 'prefix' => 'api', 'middleware' => ['api']],
+    'model_cache' => ['enabled' => false],
+    'exceptions' => ['enabled' => true, 'legacy_http_200' => false],
+    'sql' => ['enabled' => false, 'expose' => false, 'limit' => 100],
+    'pagination' => ['max_page_size' => 100],
     'http' => [
+        'verify' => true,
         'timeout' => env('NINEX_HTTP_TIMEOUT', 30),
         'connect_timeout' => env('NINEX_HTTP_CONNECT_TIMEOUT', 10),
     ],

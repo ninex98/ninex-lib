@@ -1,0 +1,6 @@
+<?php
+
+use {{namespace}}\controller\{{name}}Controller;
+use think\facade\Route;
+
+Route::resource('api/{{route}}', {{name}}Controller::class)->only(['index', 'read', 'save', 'update', 'delete']);

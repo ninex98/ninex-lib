@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/Laravel/bootstrap.php" colors="true" cacheDirectory=".phpunit.cache/laravel" failOnWarning="true" failOnRisky="true"><testsuites><testsuite name="Laravel"><directory>tests/Laravel</directory></testsuite></testsuites><php><env name="APP_ENV" value="testing"/><env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/></php></phpunit>

@@ -17,6 +17,11 @@ abstract class LibService
     use GeneralHelpers;
     use WithDbTransaction;
 
+    protected function transactionConnection(): \Illuminate\Database\Connection
+    {
+        return $this->modelClass !== null ? $this->model()->getConnection() : \Illuminate\Support\Facades\DB::connection();
+    }
+
     /**
      * 缓存时间（分钟）
      */
@@ -53,7 +58,7 @@ abstract class LibService
      */
     public function user($force = false)
     {
-        $user = Auth::guard($this->authGuard)->user();
+        $user = Auth::guard($this->authGuard ?: null)->user();
 
         if ($force && !$user) {
             throw $this->createException('未登录', 401);
@@ -68,10 +73,10 @@ abstract class LibService
     protected function remember(string $key, Closure $callback, ?int $minutes = null)
     {
         if ($this->cacheTag) {
-            return Cache::tags($this->cacheTag)->remember($key, $minutes ?? $this->cacheMinutes, $callback);
+            return Cache::tags($this->cacheTag)->remember($key, max(0, $minutes ?? $this->cacheMinutes) * 60, $callback);
         }
 
-        return Cache::remember($key, $minutes ?? $this->cacheMinutes, $callback);
+        return Cache::remember($key, max(0, $minutes ?? $this->cacheMinutes) * 60, $callback);
     }
 
     /**
@@ -140,6 +145,9 @@ abstract class LibService
      */
     protected function batch(iterable $items, Closure $callback, int $chunkSize = 100): void
     {
+        if ($chunkSize < 1) {
+            throw new \InvalidArgumentException('chunkSize must be positive.');
+        }
         $chunk = [];
         foreach ($items as $item) {
             $chunk[] = $item;

@@ -1,0 +1,16 @@
+<?php
+
+namespace {{namespace}}\controller;
+
+use {{namespace}}\service\{{name}}Service;
+use Ninex\Lib\ThinkPhp\CrudController;
+use think\{DbManager, Request};
+
+class {{name}}Controller extends CrudController
+{
+    public function __construct(Request $request, DbManager $db)
+    {
+        // Resolve identity inside the action so authentication failures use the API response.
+        parent::__construct($request, fn () => new {{name}}Service($db, $request));
+    }
+}

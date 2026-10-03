@@ -2,7 +2,6 @@
 
 namespace Ninex\Lib\Contracts;
 
-
 use Illuminate\Database\Eloquent\Builder;
 
 /**

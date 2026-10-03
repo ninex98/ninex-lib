@@ -1,0 +1,37 @@
+<?php
+
+namespace {{namespace}}\service;
+
+use Ninex\Lib\Core\{CrudService, ServiceException};
+use Ninex\Lib\ThinkPhp\ThinkOrmRepository;
+use think\{DbManager, Request, Validate};
+
+class {{name}}Service extends CrudService
+{
+    public function __construct(DbManager $db, Request $request)
+    {
+        // Authentication middleware supplies actor from a trusted session/token, never request input.
+        $actor = $request->middleware('actor');
+        if (!is_array($actor) || !isset($actor['id'])) { throw new ServiceException('请先登录', 401); }
+        $ownerId = $actor['id'];
+        if ((!is_int($ownerId) && !is_string($ownerId)) || !ctype_digit((string) $ownerId) || (int) $ownerId < 1) {
+            throw new \LogicException('Generated owner_id requires an integer identity; adapt the schema and service for other identity types.');
+        }
+        parent::__construct(
+            new ThinkOrmRepository($db, '{{table}}', {{readable}}, 'id',
+                fn ($query) => $query->where('owner_id', $ownerId), ['owner_id' => $ownerId]),
+            writable: {{writable}}, filters: {{filters}}, sorts: ['id'],
+            validate: function ($operation, $data) {
+                $rules = [];
+{{rules}}
+                $validator = new Validate();
+                if (!$validator->rule($rules)->batch(true)->check($data)) {
+                    throw new ServiceException('数据验证失败', 422, ['errors' => $validator->getError()]);
+                }
+                return $data;
+            },
+            // Authentication + owner scope are mandatory. Add application-specific roles here.
+            authorize: fn () => isset($actor['id']),
+        );
+    }
+}

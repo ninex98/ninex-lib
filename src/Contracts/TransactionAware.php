@@ -1,4 +1,5 @@
 <?php
+
 namespace Ninex\Lib\Contracts;
 
 use Throwable;

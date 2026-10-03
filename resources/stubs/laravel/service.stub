@@ -1,0 +1,32 @@
+<?php
+
+namespace {{namespace}}\Services;
+
+use {{namespace}}\Models\{{name}};
+use Illuminate\Contracts\Auth\Factory as Auth;
+use Illuminate\Contracts\Validation\Factory as Validator;
+use Ninex\Lib\Core\{CrudService, ServiceException};
+use Ninex\Lib\Database\EloquentRepository;
+
+class {{name}}Service extends CrudService
+{
+    public function __construct(Auth $auth, Validator $validator)
+    {
+        $actor = $auth->guard({{guard}})->user();
+        if (!$actor) { throw new ServiceException('请先登录', 401); }
+        $ownerId = $actor->getAuthIdentifier();
+        if (!ctype_digit((string) $ownerId) || (int) $ownerId < 1) {
+            throw new \LogicException('Generated owner_id requires an integer identity; adapt the schema and service for other identity types.');
+        }
+        parent::__construct(
+            new EloquentRepository({{name}}::class, {{readable}},
+                fn ($query) => $query->where('owner_id', $ownerId), ['owner_id' => $ownerId]),
+            writable: {{writable}}, filters: {{filters}}, sorts: ['id'],
+            validate: fn ($operation, $data) => $validator->make($data, [
+{{rules}}
+            ])->validate(),
+            // Authentication + owner scope are mandatory. Add application-specific roles here.
+            authorize: fn () => $actor->getAuthIdentifier() !== null,
+        );
+    }
+}
