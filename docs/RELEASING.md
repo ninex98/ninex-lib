@@ -5,20 +5,20 @@
 
 ## 发布验收
 
-本次直接发布 `v2.0.0` 正式版，不要求先发布 RC。
+当前目标为 `v2.1.0`。新增框架 Service 和生成能力按次版本发布，旧稳定标签保持不变。
 本库的自动化兼容测试不能替代应用自身的字段、权限、前端协议和事务验收。
-正式发布后使用 `composer require ninex/lib:^2.0`。
+正式发布后使用 `composer require ninex/lib:^2.1`。
 必要改动见[迁移指南](UPGRADE-2.md)。记录应用验收结果，并确认目标提交的 GitHub Actions 全部通过。
 
 ## 正常发布
 
 1. 确认 CHANGELOG.md 的版本和实际发布日期、README 的安装命令与目标版本一致。
-2. 提交并推送功能分支，确认该提交的 GitHub Actions 全部通过。将验收代码合并到 main，使仓库首页文档与发布内容一致，并以 main 目标提交的 CI 结果作为打标签依据。
+2. 使用中文提交信息；准备 release/版本号 分支及 docs/releases/版本号.md 发布说明，确认 Git 跟踪树、待推送引用和提交信息不含本机工作记录。提交并推送分支，确认该提交的 GitHub Actions 全部通过。将验收代码合并到 main，使仓库首页文档与发布内容一致，并以 main 目标提交的 CI 结果作为打标签依据。
 3. 在 main 的已验收提交上创建正式版标签并推送：
 
 ```bash
-git tag -a v2.0.0 -m "Ninex Lib 2.0.0"
-git push origin v2.0.0
+git tag -a v2.1.0 -m "发布 Ninex Lib 2.1.0"
+git push origin v2.1.0
 ```
 
 不覆盖或强推已有标签。兼容的问题修复使用 `v2.0.1`、`v2.0.2`；兼容的新功能使用 `v2.1.0`；不兼容修改需要新的主版本。
@@ -26,7 +26,7 @@ git push origin v2.0.0
 4. 标签推送触发两条流程：
 
 - Packagist：已有 GitHub webhook 自动抓取标签。它直接跟随标签，不等待 GitHub Actions，所以打标签之前先确保分支测试通过。
-- GitHub Release：release.yml 复用完整测试工作流，通过后创建对应 Release，并生成变更记录。alpha/beta/rc 标签自动标为预发布。
+- GitHub Release：release.yml 复用完整测试工作流，通过后创建对应 Release，优先使用 docs/releases/版本号.md 中已审阅的说明，缺少时才生成变更记录。alpha/beta/rc 标签自动标为预发布。
 
 Release 使用 GitHub 自动提供的源码归档，不需要手工上传 ZIP，也不需要新的 Packagist Token。
 工作流使用内置 GITHUB_TOKEN，只有创建 Release 的 job 请求 contents:write；仓库需要启用 Actions 并允许该权限。
@@ -40,7 +40,7 @@ Release 使用 GitHub 自动提供的源码归档，不需要手工上传 ZIP，
 可以本地检查标签格式和已存在的 Packagist 版本：
 
 ```bash
-php tools/release-metadata.php v2.0.0
+php tools/release-metadata.php v2.1.0
 php tools/check-packagist.php --tag=1.0.9 --attempts=1
 ```
 
@@ -49,11 +49,11 @@ php tools/check-packagist.php --tag=1.0.9 --attempts=1
 这只是开发验证，正常发布无需操作这些 ZIP：
 
 ```bash
-php tools/build-package.php
-php tools/test-consumers.php --composer="$(command -v composer)"
+php tools/build-package.php --ref=HEAD --version=2.1.0
+php tools/test-consumers.php --composer="$(command -v composer)" --version=2.1.0
 ```
 
-默认生成一个 build/packages/ninex-lib-2.0.0.zip，另有 SHA256SUMS 和本地 Composer 仓库索引。
+默认生成一个 build/packages/ninex-lib-2.1.0.zip，另有 SHA256SUMS 和本地 Composer 仓库索引。
 安装验证默认使用 Composer 的 stable 策略；验证其他版本时，构建和安装命令都传入相同的 `--version`。
 标签触发的 CI 自动使用标签对应版本，例如 v2.0.1，无需为每次修复版本改写构建脚本。
 压缩包包含运行时源码、模板、CLI、文档示例；不含 vendor、测试、开发脚本或多包路径。

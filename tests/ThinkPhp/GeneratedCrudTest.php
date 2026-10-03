@@ -26,6 +26,14 @@ class GeneratedCrudTest extends TestCase
             protected $initializers = [\think\initializer\RegisterService::class, \think\initializer\BootService::class];
         };
         try {
+            $controller = new \ReflectionClass(\GeneratedThinkApp\controller\NinexGeneratedRecordController::class);
+            foreach (['index', 'read', 'save', 'update', 'delete'] as $action) {
+                $this->assertSame($controller->getName(), $controller->getMethod($action)->getDeclaringClass()->getName());
+            }
+            $service = new \ReflectionClass(\GeneratedThinkApp\service\NinexGeneratedRecordService::class);
+            foreach (['paginate', 'show', 'store', 'update', 'destroy', 'validateForm', 'rules', 'scopeQuery', 'saving', 'saved', 'deleted'] as $method) {
+                $this->assertSame($service->getName(), $service->getMethod($method)->getDeclaringClass()->getName());
+            }
             $app->config->set(['default' => 'file', 'stores' => ['file' => ['type' => 'File', 'path' => $root.'runtime/cache/']]], 'cache');
             $app->config->set(['default' => 'file', 'channels' => ['file' => ['type' => 'File', 'path' => $root.'runtime/log/']]], 'log');
             $app->initialize();
@@ -53,6 +61,12 @@ class GeneratedCrudTest extends TestCase
             $created = $send('POST', $url, ['name' => 'created', 'status' => false, 'quantity' => 0, 'note' => null, 'on_date' => '2026-10-02', 'at_time' => '2026-10-02 10:00:00'], 1);
             $this->assertSame(201, $created->getCode(), json_encode($created->getData()));
             $id = $created->getData()['data']['id'];
+            $listed = $send('GET', $url, [], 1);
+            $this->assertSame(200, $listed->getCode());
+            $this->assertSame(1, $listed->getData()['data']['total']);
+            $shown = $send('GET', $url.'/'.$id, [], 1);
+            $this->assertSame(200, $shown->getCode());
+            $this->assertSame('created', $shown->getData()['data']['name']);
             $updated = $send('PUT', $url.'/'.$id, ['name' => 'updated'], 1);
             $this->assertSame(200, $updated->getCode(), json_encode($updated->getData()));
             $this->assertSame('updated', $updated->getData()['data']['name']);

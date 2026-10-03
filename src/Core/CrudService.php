@@ -3,9 +3,10 @@
 namespace Ninex\Lib\Core;
 
 use Closure;
+use Ninex\Lib\Contracts\CrudActions;
 
 /** Validation and authorization are required application decisions, with no global framework state. */
-class CrudService
+class CrudService implements CrudActions
 {
     public function __construct(
         protected CrudRepository $repository,

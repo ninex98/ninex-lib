@@ -5,6 +5,21 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.1.0] - 2026-10-04
+
+### 新增
+
+- Laravel EloquentService、ThinkPHP TableService 与统一 CRUD 调用契约；保留原核心及旧 Service API。
+- 业务 Controller、Service 显式生成简短 CRUD 入口、验证、过滤及常用钩子，附中英文注释；公共执行流程由基类处理，业务通过 find/create/save/delete 等实例方法调用。
+- 字段默认值从验证规则与表字段推导，无需重复配置；saving 支持验证后转换；新增过滤扩展、钩子执行顺序、关联写入回滚及权限范围回归验证。
+
+### 调整
+
+- 默认商品示例使用普通登录用户，移除租户和角色前提；提供 scopeWhere/scopeWhereLike 实例过滤辅助方法。
+- Laravel 服务初始化集中到控制器 callAction，并兼容直接调用继承的旧 CRUD；新业务写事务由 Service 负责。
+- Laravel 生成模型继承 LibModel；ThinkPHP 新业务控制器使用 ServiceController，旧 CrudController 保持兼容。
+- 新增显式业务扩展与现有项目迁移指南；已生成文件不自动覆盖。
+
 ## [2.0.1] - 2026-10-03
 
 ### 文档

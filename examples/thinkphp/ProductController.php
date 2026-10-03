@@ -2,15 +2,47 @@
 
 namespace Ninex\Lib\Examples\ThinkPhp;
 
-use think\DbManager;
-use think\Request;
-use Ninex\Lib\ThinkPhp\CrudController;
+use Ninex\Lib\ThinkPhp\ServiceController;
+use think\{DbManager, Request, Response};
 
-class ProductController extends CrudController
+class ProductController extends ServiceController
 {
     public function __construct(Request $request, DbManager $db)
     {
-        // ThinkPHP caches container-resolved dependencies; identity-bound services must be fresh.
+        // 在响应入口解析服务，统一处理身份错误。 / Resolve services inside the response boundary.
         parent::__construct($request, fn () => new ProductService($db, $request));
+    }
+
+    /** 列表。 / List records. */
+    public function index(): Response
+    {
+        return $this->respond(fn () => $this->service->paginate($this->request->get())->toArray());
+    }
+
+    /** 详情。 / Show a record. */
+    public function read($id): Response
+    {
+        return $this->respond(fn () => $this->service->show($id));
+    }
+
+    /** 创建。 / Create a record. */
+    public function save(): Response
+    {
+        return $this->respond(fn () => $this->service->store($this->request->post()), 201);
+    }
+
+    /** 更新。 / Update a record. */
+    public function update($id): Response
+    {
+        return $this->respond(fn () => $this->service->update($id, $this->request->put()));
+    }
+
+    /** 删除。 / Delete a record. */
+    public function delete($id): Response
+    {
+        return $this->respond(function () use ($id) {
+            $this->service->destroy($id);
+            return [];
+        });
     }
 }

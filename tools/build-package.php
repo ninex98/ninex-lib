@@ -3,7 +3,7 @@
 /** Build one Composer archive without committing, tagging or publishing anything. */
 $options = getopt('', ['version:', 'output:', 'ref:']);
 require __DIR__.'/release-metadata.php';
-$version = ninexReleaseMetadata($options['version'] ?? '2.0.0')['version'];
+$version = ninexReleaseMetadata($options['version'] ?? '2.1.0')['version'];
 $root = dirname(__DIR__);
 $output = $options['output'] ?? $root.'/build/packages';
 if (!is_dir($output) && !mkdir($output, 0777, true)) {

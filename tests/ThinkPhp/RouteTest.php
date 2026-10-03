@@ -26,7 +26,7 @@ class RouteTest extends TestCase
             $app->initialize();
             $db = new DbManager();
             $db->setConfig($this->databaseFixture->think());
-            $db->connect()->execute($this->databaseFixture->createTableSql('products'));
+            $db->connect()->execute(str_replace('tenant_id', 'owner_id', $this->databaseFixture->createTableSql('products')));
             $app->instance(DbManager::class, $db);
             $send = function ($method, $path, $body = [], $actor = null) use ($app) {
                 $request = (new Request())->withServer(['REQUEST_METHOD' => $method, 'REQUEST_URI' => '/'.$path])->setPathinfo($path)
@@ -34,7 +34,7 @@ class RouteTest extends TestCase
                     ->withInput(json_encode($body))->withMiddleware(['actor' => $actor]);
                 return $app->http->run($request);
             };
-            $actor = ['id' => 1, 'tenant_id' => 10, 'role' => 'editor'];
+            $actor = ['id' => 1];
             $this->assertSame(401, $send('GET', 'api/products')->getCode());
             $this->assertSame(422, $send('POST', 'api/products', [], $actor)->getCode());
             $created = $send('POST', 'api/products', ['name' => 'demo'], $actor);
@@ -43,8 +43,8 @@ class RouteTest extends TestCase
             $updated = $send('PUT', 'api/products/'.$id, ['name' => 'updated'], $actor);
             $this->assertSame(200, $updated->getCode(), json_encode($updated->getData()));
             $this->assertSame('updated', $updated->getData()['data']['name']);
-            $this->assertSame(404, $send('GET', 'api/products/'.$id, [], ['id' => 2, 'tenant_id' => 20, 'role' => 'editor'])->getCode());
-            $this->assertSame(403, $send('DELETE', 'api/products/'.$id, [], ['id' => 3, 'tenant_id' => 10, 'role' => 'viewer'])->getCode());
+            $this->assertSame(404, $send('GET', 'api/products/'.$id, [], ['id' => 2])->getCode());
+            $this->assertSame(404, $send('DELETE', 'api/products/'.$id, [], ['id' => 3])->getCode());
             $this->assertSame(200, $send('DELETE', 'api/products/'.$id, [], $actor)->getCode());
             $this->assertSame(0, $db->table('products')->count());
         } finally {

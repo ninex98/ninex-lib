@@ -7,4 +7,39 @@ use Ninex\Lib\Http\Controllers\LibController;
 class ProductController extends LibController
 {
     protected ?string $serviceClass = ProductService::class;
+
+    /** 列表。 / List records. */
+    public function index()
+    {
+        $result = $this->service->paginate($this->request->all());
+        return $this->respondWithCollection($result);
+    }
+
+    /** 详情。 / Show a record. */
+    public function show($id)
+    {
+        $result = $this->service->show($id);
+        return $this->success($this->resource::make($result));
+    }
+
+    /** 创建。 / Create a record. */
+    public function store()
+    {
+        $result = $this->service->store($this->request->all());
+        return $this->respondWithCreatedResource($result);
+    }
+
+    /** 更新。 / Update a record. */
+    public function update($id)
+    {
+        $result = $this->service->update($id, $this->request->all());
+        return $this->success($this->resource::make($result));
+    }
+
+    /** 删除。 / Delete a record. */
+    public function destroy($id): \Illuminate\Http\JsonResponse
+    {
+        $this->service->destroy($id);
+        return $this->noContent();
+    }
 }

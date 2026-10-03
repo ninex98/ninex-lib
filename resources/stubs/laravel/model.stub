@@ -2,10 +2,11 @@
 
 namespace {{namespace}}\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Ninex\Lib\Models\LibModel;
 
-class {{name}} extends Model
+class {{name}} extends LibModel
 {
+    /** 表名；关联和转换器可在此扩展。 / Table name; add relations and casts here. */
     protected $table = '{{table}}';
     public $timestamps = false;
 }

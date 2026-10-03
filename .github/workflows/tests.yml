@@ -105,7 +105,7 @@ jobs:
   packaged-consumers:
     runs-on: ubuntu-latest
     env:
-      NINEX_PACKAGE_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '2.0.0' }}
+      NINEX_PACKAGE_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '2.1.0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

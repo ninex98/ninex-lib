@@ -39,7 +39,14 @@ jobs:
             echo "Release already exists; preserving its notes and assets."
             exit 0
           fi
-          args=("$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" --generate-notes)
+          args=("$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG")
+          version=$(php -r '$m=json_decode(file_get_contents("release-metadata.json"), true); echo $m["version"];')
+          notes_file="docs/releases/$version.md"
+          if [ -f "$notes_file" ]; then
+            args+=(--notes-file "$notes_file")
+          else
+            args+=(--generate-notes)
+          fi
           if [ "$(php -r '$m=json_decode(file_get_contents("release-metadata.json"), true); echo $m["prerelease"] ? "true" : "false";')" = true ]; then
             args+=(--prerelease)
           fi

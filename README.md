@@ -18,12 +18,12 @@
 
 ## 快速开始
 
-> 本页对应 **2.x**。1.x 用户请先阅读[迁移指南](docs/UPGRADE-2.md)；源码开发与分支试用见[开发说明](docs/DEVELOPMENT.md)。
+> 本页对应 **2.1.x**。1.x 用户请先阅读[迁移指南](docs/UPGRADE-2.md)；源码开发与分支试用见[开发说明](docs/DEVELOPMENT.md)。
 
 安装到已有应用：
 
 ```bash
-composer require ninex/lib:^2.0
+composer require ninex/lib:^2.1
 ```
 
 ### Laravel
@@ -89,6 +89,8 @@ $service->paginate(['filter' => ['status' => 0], 'page_size' => 15]);
 ```
 
 公共核心通过仓储接口接入数据库，使用数组与分页对象传递数据。生成器负责起步代码，应用决定自己的业务规则。
+
+2.1 提供简洁业务模板：Controller 和 Service 均保留 CRUD 方法，验证、过滤和常用保存钩子直接显示在业务文件中，CRUD 默认一行调用，字段无需维护重复名单，附中英文说明。Laravel 使用 Eloquent，ThinkPHP 使用原生查询接口；详见[业务扩展与迁移](docs/GENERATED-CRUD.md)。2.0.x 已生成的业务文件无需替换，也不会被自动覆盖。
 
 <details>
 <summary><strong>统一响应与业务异常</strong></summary>

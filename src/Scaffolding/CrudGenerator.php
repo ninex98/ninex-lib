@@ -8,23 +8,18 @@ final class CrudGenerator
     public function plan(ResourceDefinition $definition, string $project): array
     {
         $d = $definition;
-        $fieldNames = array_keys($d->fields);
-        $readable = array_merge(['id'], $fieldNames);
-        $filters = array_keys(array_filter($d->fields, fn ($field) => $field['type'] !== 'text'));
-        $export = static fn (array $values) => '['.implode(', ', array_map(fn ($value) => var_export($value, true), $values)).']';
         $variables = [
             '{{namespace}}' => $d->namespace, '{{name}}' => $d->name, '{{table}}' => $d->table, '{{route}}' => $d->route,
-            '{{writable}}' => $export($fieldNames), '{{readable}}' => $export($readable), '{{filters}}' => $export($filters),
             '{{auth}}' => $d->guard === null ? 'auth' : 'auth:'.$d->guard,
-            '{{guard}}' => var_export($d->guard, true),
+            '{{guard_property}}' => $d->guard === null ? '' : '    protected ?string $authGuard = '.var_export($d->guard, true).";\n",
         ];
         if ($d->framework === 'laravel') {
             $rules = [];
             $columns = [];
             foreach ($d->fields as $name => $field) {
                 $rule = $this->rule($field['type'], 'laravel');
-                $presence = $field['nullable'] ? "'nullable'" : "(\$operation === 'store' ? 'required' : 'sometimes|required')";
-                $rules[] = "                '{$name}' => {$presence}.'|{$rule}',";
+                $presence = $field['nullable'] ? "'nullable'" : "(\$id === null ? 'required' : 'sometimes|required')";
+                $rules[] = "            '{$name}' => {$presence}.'|{$rule}',";
                 $method = match ($field['type']) {
                     'text' => 'longText', 'datetime' => 'dateTime', default => $field['type']
                 };
@@ -46,9 +41,9 @@ final class CrudGenerator
             foreach ($d->fields as $name => $field) {
                 $rule = $this->rule($field['type'], 'thinkphp');
                 if ($field['nullable']) {
-                    $rules[] = "                if (isset(\$data['{$name}'])) { \$rules['{$name}'] = '{$rule}'; }";
+                    $rules[] = "            '{$name}' => isset(\$data['{$name}']) ? '{$rule}' : null,";
                 } else {
-                    $rules[] = "                if (\$operation === 'store' || array_key_exists('{$name}', \$data)) { \$rules['{$name}'] = 'require|{$rule}'; }";
+                    $rules[] = "            '{$name}' => (\$id === null || array_key_exists('{$name}', \$data) ? 'require|' : '').'{$rule}',";
                 }
             }
             $variables['{{rules}}'] = implode("\n", $rules);
