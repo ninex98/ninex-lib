@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/readme-cover.svg" alt="Ninex Lib — 可移植的 PHP CRUD 工具包" width="1200" />
+<img src="docs/assets/readme-cover-35561d7e.svg" alt="Ninex Lib — 可移植的 PHP CRUD 工具包" width="1200" />
 
 <h3>
 一个极简的 PHP 开发脚手架，一条命令生成 CRUD，统一集成分页、验证、事务、响应与异常处理。
