@@ -4,9 +4,9 @@
 
 **一个 Composer 包。核心独立，Laravel / ThinkPHP 按需接入。**
 
-[![PHP](https://img.shields.io/badge/PHP-%5E8.1-496B58?style=flat-square)](composer.json)
-[![Composer](https://img.shields.io/badge/Composer-ninex%2Flib-18372F?style=flat-square)](https://packagist.org/packages/ninex/lib)
-[![License](https://img.shields.io/badge/License-MIT-466657?style=flat-square)](LICENSE)
+[![PHP](https://img.shields.io/badge/PHP-%5E8.1-355C91?style=flat-square)](composer.json)
+[![Composer](https://img.shields.io/badge/Composer-ninex%2Flib-17283E?style=flat-square)](https://packagist.org/packages/ninex/lib)
+[![License](https://img.shields.io/badge/License-MIT-52647B?style=flat-square)](LICENSE)
 
 [快速开始](#快速开始) · [Laravel](#laravel) · [ThinkPHP](#thinkphp) · [兼容范围](#兼容范围) · [接入指南](docs/USAGE.md) · [更新记录](CHANGELOG.md)
 
