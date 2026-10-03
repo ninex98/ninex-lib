@@ -5,6 +5,13 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.0.1] - 2026-10-03
+
+### 文档
+
+- 统一发布分支命名与 Packagist 开发版本安装命令。
+- 运行时代码、依赖要求和兼容范围与 2.0.0 一致。
+
 ## [2.0.0] - 2026-10-03
 
 ### 新增
