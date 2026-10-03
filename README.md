@@ -2,7 +2,9 @@
 
 <img src="docs/assets/readme-cover.svg" alt="Ninex Lib — 可移植的 PHP CRUD 工具包" width="1200" />
 
-**一个 Composer 包。核心独立，Laravel / ThinkPHP 按需接入。**
+<h3>
+一个极简的 PHP 开发脚手架，一条命令生成 CRUD，统一集成分页、验证、事务、响应与异常处理。
+</h3>
 
 [![PHP](https://img.shields.io/badge/PHP-%5E8.1-355C91?style=flat-square)](composer.json)
 [![Composer](https://img.shields.io/badge/Composer-ninex%2Flib-17283E?style=flat-square)](https://packagist.org/packages/ninex/lib)
@@ -72,7 +74,9 @@ Laravel / ThinkPHP 原生入口分别为 `php artisan ninexlib:doctor`、`php th
 | `PUT` | `/api/products/{id}` | 更新 |
 | `DELETE` | `/api/products/{id}` | 删除 |
 
-**两种接入默认都需要登录，只能操作自己的记录。** 认证由宿主提供，所有权模板使用整数用户 ID。字段、验证和权限集中在生成的 Service 中，可直接按业务修改。
+**生成的 CRUD 默认按用户隔离数据：接口通过项目已有的登录认证识别用户，每个人只能访问自己的记录。** 例如，用户 A 创建的数据，用户 B 无法查看、修改或删除。
+
+登录功能由你的项目提供。公开查询、后台管理或团队共享等场景，需要按业务调整生成的路由和 Service；详见[认证与数据权限](docs/USAGE.md#权限与查询)。
 
 ## 业务代码保持简短
 
