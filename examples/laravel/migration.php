@@ -11,7 +11,7 @@ return new class () extends Migration {
             $table->id();
             $table->string('name', 100);
             $table->unsignedTinyInteger('status')->default(0);
-            $table->unsignedBigInteger('tenant_id')->index();
+            $table->unsignedBigInteger('owner_id')->index();
         });
     }
     public function down(): void

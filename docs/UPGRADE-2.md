@@ -11,7 +11,7 @@
 | 旧查询筛选 | 默认 allowedFilters=[]，保留旧平面参数格式 | 为旧 Service 声明 allowedFilters；核心使用 filter[field] 格式 |
 | 分页 | 页数/页大小必须正整数，限制最大页大小 | 清理不合法参数；核心不接受任意附加查询参数 |
 | 控制器授权 | 旧控制器沿用应用权限；protected bool $usePolicy = true 可启用 Gate/Policy | 默认无需补 Policy；显式启用后缺少规则会拒绝；新核心仍执行必需的授权回调 |
-| 控制器生命周期 | serviceClass 每个 action 重新解析，在认证后取得身份 | 推荐 serviceClass；不要跨请求缓存身份相关 Service |
+| 控制器生命周期 | serviceClass 由 callAction 在认证后、业务方法前重新解析 | 推荐 serviceClass；不要跨请求缓存身份相关 Service；覆写 callAction 时调用父方法，action 内无需重复 prepareCrud；继承的旧 CRUD 支持直接调用；自定义 action 应经路由分发 |
 | 写事务 | 旧 CRUD 服务和核心服务负责，控制器默认不额外开事务 | 自定义多表业务在服务层明确定义事务边界 |
 | HTTP 状态 | 创建 201，错误真实状态；删除仍为 200 + data:[] | 更新前端拦截器；旧协议可临时启用 exceptions.legacy_http_200 |
 | 业务错误 | ServiceException 增加 previous 和独立 httpStatus | 不再把自定义业务码直接当 HTTP 状态 |
@@ -45,7 +45,7 @@
 ThinkPHP 生成控制器内已处理 API 异常；其他 API 可通过 app/provider.php 显式绑定。`ninexlib.legacy_http_200` 是对应的旧协议开关，也应用于创建成功响应。
 
 FilterInterface 仍是 Eloquent 专用接口；TransactionAware 为兼容保留，不能当作已注册的生命周期机制。
-旧业务使用明确的 saving/saved/deleted 或事务回调；新业务使用组合式核心 Service。
+旧业务使用明确的 saving/saved/deleted 或事务回调；原回调式核心 Service 保持可用；2.1 新模板采用显式框架 Service，参见[业务模板迁移](GENERATED-CRUD.md#事务与兼容)。
 
 新增生成器：php artisan ninexlib:make-crud、php think ninexlib:make-crud 或 vendor/bin/ninex make:crud。
 先运行 php artisan ninexlib:doctor --strict 检查常见迁移项；静态提示不会自动改写业务字段、权限或数据。

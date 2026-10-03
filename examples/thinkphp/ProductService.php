@@ -2,46 +2,78 @@
 
 namespace Ninex\Lib\Examples\ThinkPhp;
 
-use Ninex\Lib\Core\CrudService;
-use Ninex\Lib\Core\ServiceException;
-use Ninex\Lib\ThinkPhp\ThinkOrmRepository;
-use think\DbManager;
-use think\Request;
-use think\Validate;
+use Ninex\Lib\ThinkPhp\TableService;
+use think\db\Query;
+use Ninex\Lib\Core\Page;
 
-class ProductService extends CrudService
+class ProductService extends TableService
 {
-    public function __construct(DbManager $db, Request $request)
+    protected string $table = 'products';
+
+    /** 列表。 / List records. */
+    public function paginate(array $input = []): Page
     {
-        // Authentication middleware must set this from a trusted session/token, never request parameters.
-        $actor = $request->middleware('actor');
-        if (!is_array($actor) || !isset($actor['id'], $actor['tenant_id'])) {
-            throw new ServiceException('请先登录', 401);
-        }
-        parent::__construct(
-            new ThinkOrmRepository(
-                $db,
-                'products',
-                ['id', 'name', 'status'],
-                'id',
-                fn ($query) => $query->where('tenant_id', $actor['tenant_id']),
-                ['tenant_id' => $actor['tenant_id']]
-            ),
-            writable: ['name', 'status'],
-            filters: ['status'],
-            sorts: ['id', 'name'],
-            validate: function ($operation, $data) {
-                $rules = ['status' => 'integer|in:0,1'];
-                if ($operation === 'store' || array_key_exists('name', $data)) {
-                    $rules['name'] = 'require|string|max:100';
-                }
-                $validator = new Validate();
-                if (!$validator->rule($rules)->batch(true)->check($data)) {
-                    throw new ServiceException('数据验证失败', 422, ['errors' => $validator->getError()]);
-                }
-                return $data;
-            },
-            authorize: fn ($operation) => in_array($operation, ['index', 'show'], true) || ($actor['role'] ?? null) === 'editor',
-        );
+        return $this->getPage($input);
+    }
+
+    /** 详情。 / Show a record. */
+    public function show(string|int $id): array
+    {
+        return $this->find($id);
+    }
+
+    /** 创建，基类统一处理验证和事务。 / Create with validation and a transaction. */
+    public function store(array $input): array
+    {
+        return $this->create($input);
+    }
+
+    /** 更新，基类统一处理验证和事务。 / Update with validation and a transaction. */
+    public function update(string|int $id, array $input): array
+    {
+        return $this->save($input, $id);
+    }
+
+    /** 删除。 / Delete a record. */
+    public function destroy(string|int $id): void
+    {
+        $this->delete($id);
+    }
+
+    /** 表单验证，需要额外校验时在此扩展。 / Extend form validation here. */
+    public function validateForm(array $data, string|int|null $id = null): array
+    {
+        return $this->validate($data, $this->rules($data, $id));
+    }
+
+    /** 字段只在这里声明；id 为空表示创建。 / Declare fields once; a null ID means creation. */
+    protected function rules(array $data, string|int|null $id = null): array
+    {
+        return [
+            'name' => ($id === null || array_key_exists('name', $data) ? 'require|' : '').'string|max:100',
+            'status' => 'integer|in:0,1',
+        ];
+    }
+
+    /** 在此添加模糊、范围等业务过滤。 / Add custom query filters here. */
+    public function scopeQuery(Query $query, array $conditions): void
+    {
+        $this->scopeWhereLike($query, array_intersect_key($conditions, ['name' => true]));
+        $this->scopeWhere($query, array_diff_key($conditions, ['name' => true]));
+    }
+
+    /** 保存前，可转换表单字段。 / Transform form fields before saving. */
+    protected function saving(array &$data, string|int|null $id = null): void
+    {
+    }
+
+    /** 保存后、提交前，关联写入使用同一连接。 / Write related data before commit on the same connection. */
+    protected function saved(array $record, bool $isEdit = false): void
+    {
+    }
+
+    /** 删除后、提交前。 / After deletion, before commit. */
+    protected function deleted(array $record): void
+    {
     }
 }

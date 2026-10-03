@@ -6,7 +6,7 @@ require __DIR__.'/release-metadata.php';
 $root = dirname(__DIR__);
 $repository = realpath($options['repository'] ?? $root.'/build/packages/packages.json');
 $composer = $options['composer'] ?? getenv('NINEX_COMPOSER_BINARY');
-$version = ninexReleaseMetadata($options['version'] ?? '2.0.0')['version'];
+$version = ninexReleaseMetadata($options['version'] ?? '2.1.0')['version'];
 $stability = preg_match('/-(alpha|beta|rc)/i', $version, $match)
     ? ['alpha' => 'alpha', 'beta' => 'beta', 'rc' => 'RC'][strtolower($match[1])]
     : 'stable';

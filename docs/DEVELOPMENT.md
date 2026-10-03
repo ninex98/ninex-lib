@@ -31,12 +31,12 @@ Laravel 测试宿主按当前 PHP 选择兼容版本；也可以在测试宿主�
 ```json
 {
   "repositories": [
-    {"type":"path","url":"/绝对路径/ninex-lib","options":{"versions":{"ninex/lib":"2.0.0"}}}
+    {"type":"path","url":"/绝对路径/ninex-lib","options":{"versions":{"ninex/lib":"2.1.0"}}}
   ]
 }
 ```
 
-然后 `composer require ninex/lib:^2.0`。这个本地 version alias 不代表已正式发布。
+然后 `composer require ninex/lib:^2.1`。这个本地 version alias 不代表已正式发布。
 发布后移除 path repository，沿用 Packagist 的同一个包名。
 
 ## 从 Packagist 试用发布分支
@@ -44,11 +44,11 @@ Laravel 测试宿主按当前 PHP 选择兼容版本；也可以在测试宿主�
 需要核验本次发布分支时，可在测试项目中明确指定开发版本：
 
 ```bash
-composer require 'ninex/lib:dev-release/2.0.0'
+composer require 'ninex/lib:dev-release/2.1.0'
 ```
 
 该版本随分支提交更新，不是固定的正式版本，也无需降低整个项目的 minimum-stability。
-正式接入使用 `composer require ninex/lib:^2.0`；发布后应切回稳定版约束。
+正式接入使用 `composer require ninex/lib:^2.1`；发布后应切回稳定版约束。
 
 ## MySQL 和队列
 

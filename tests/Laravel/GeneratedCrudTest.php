@@ -34,6 +34,14 @@ class GeneratedCrudTest extends TestCase
             }
             file_put_contents($routeCache, '<?php // prior route cache');
             $this->artisan('ninexlib:make-crud', ['name' => 'NinexGeneratedRecord', '--fields' => $fields, '--table' => 'generated_records', '--route' => 'generated-records'])->assertExitCode(0);
+            $controller = new \ReflectionClass(\App\Http\Controllers\NinexGeneratedRecordController::class);
+            foreach (['index', 'show', 'store', 'update', 'destroy'] as $action) {
+                $this->assertSame($controller->getName(), $controller->getMethod($action)->getDeclaringClass()->getName());
+            }
+            $service = new \ReflectionClass(\App\Services\NinexGeneratedRecordService::class);
+            foreach (['paginate', 'show', 'store', 'update', 'destroy', 'validateForm', 'rules', 'scopeQuery', 'saving', 'saved', 'deleted'] as $method) {
+                $this->assertSame($service->getName(), $service->getMethod($method)->getDeclaringClass()->getName());
+            }
             $this->assertFileDoesNotExist($routeCache);
             $migration = glob($root.'/database/migrations/*_create_generated_records_table.php')[0];
             (require $migration)->up();
@@ -49,6 +57,7 @@ class GeneratedCrudTest extends TestCase
             $this->postJson($url, ['name' => 'spoof', 'status' => false, 'quantity' => 0, 'owner_id' => 2])->assertUnprocessable();
             $id = $this->postJson($url, ['name' => 'created', 'status' => false, 'quantity' => 0, 'note' => null, 'on_date' => '2026-10-02', 'at_time' => '2026-10-02 10:00:00'])->assertCreated()->assertJsonMissingPath('data.owner_id')->json('data.id');
             $this->getJson($url.'?filter[status]=0')->assertOk()->assertJsonPath('data.total', 1);
+            $this->getJson($url.'/'.$id)->assertOk()->assertJsonPath('data.name', 'created');
             $this->putJson($url.'/'.$id, ['name' => 'updated'])->assertOk()->assertJsonPath('data.name', 'updated');
             $this->actingAs(new GenericUser(['id' => 2]));
             $this->getJson($url.'/'.$id)->assertNotFound();

@@ -2,6 +2,8 @@
 
 [返回 README](../README.md)
 
+> 本页描述 2.1 的简洁 Service 模板。简洁模板、扩展入口和迁移方式见[业务 CRUD](GENERATED-CRUD.md)。
+
 ## Laravel
 
 在已有 Laravel 应用中安装 `ninex/lib` 后，Provider 自动注册命令、合并配置并加载生成的路由。
@@ -23,7 +25,11 @@ php artisan migrate
 | `routes/ninex/products.php` | CRUD 路由，默认挂载到 `/api/products` |
 
 认证使用宿主默认 guard，可通过 `--guard=sanctum` 等选择应用已配置的 guard。本包不创建用户表或登录系统。
-服务在 action 开始时、认证中间件之后解析，不应注册为跨请求 singleton。
+服务由基类的 `callAction` 在认证中间件之后、业务方法之前统一解析，不应注册为跨请求 singleton。配置了服务的自定义 action 也使用这个入口，无需逐个调用 `prepareCrud()`。
+
+生成的业务控制器显式包含 `index`、`show`、`store`、`update`、`destroy` 五个方法，可直接在对应入口添加业务逻辑。每个方法调用 Service 并返回统一响应；分页资源转换和创建状态码由基类封装，验证、授权、钩子调度和事务由 Service 基类统一处理。新 action 不额外包装控制器事务。
+生成器不会覆盖已有文件；已生成的控制器仍可继续继承基类方法，需要显式入口时手动合并新版模板。
+自行覆盖 `callAction` 时应调用父方法；控制器测试优先通过 HTTP 路由执行，直接调用自行覆写的 action 会跳过统一初始化；继承的旧 CRUD 仍保留直接调用兼容。已有 action 内的 `prepareCrud()` 可移除，避免重复解析服务。
 
 路由前缀、中间件和自动加载开关由 `ninexlib.routes` 配置控制。Artisan 生成命令会清理现有路由缓存；部署时可重新执行 `php artisan route:cache`。
 生成路由始终使用 JSON 响应，包括未携带 `Accept` 头的认证错误。
@@ -49,6 +55,7 @@ php think ninexlib:make-crud Product --fields="name:string,status:boolean,note:t
 
 认证中间件应从可信 session/token 获取身份，通过 `$request->withMiddleware(['actor' => $actor])` 提供 `actor[id]`；不要从客户端提交字段取得身份。
 生成控制器在每次 action 内创建服务，并直接处理统一 JSON 异常，无需修改 `app/provider.php`。
+业务控制器显式包含 `index`、`read`、`save`、`update`、`delete` 五个方法，服务调用保留在 `respond` 回调内，以统一处理身份解析、响应和异常。
 
 对于生成 CRUD 以外的 API，可以把下面的绑定合并到现有 `app/provider.php`，或在自定义处理器中整合：
 
@@ -56,7 +63,7 @@ php think ninexlib:make-crud Product --fields="name:string,status:boolean,note:t
 return [\think\exception\Handle::class => \Ninex\Lib\ThinkPhp\ExceptionHandler::class];
 ```
 
-不要覆盖已有 provider 文件。ThinkORM 接入使用原生查询构造器，不自动执行模型事件或软删除；需要这些语义时实现自己的 `CrudRepository`。
+不要覆盖已有 provider 文件。ThinkORM 接入使用原生查询构造器，不自动执行模型事件或软删除；需要这些语义时使用业务自己的模型适配。旧公共核心仍可通过自定义 `CrudRepository` 接入。
 
 ## 旧 Laravel 基类
 
@@ -80,7 +87,7 @@ protected bool $usePolicy = true;
 
 对应能力为 `viewAny`、`view`、`create`、`update`、`delete`。注册 Policy 或 Gate 规则后执行检查；启用但没有匹配规则时返回拒绝，不会自动放行。
 开关作用于基类提供的 CRUD 方法；自行覆写的 action 仍应在自身或 Service 中执行授权。
-新核心 Service 自己执行必需的授权回调，不使用此旧控制器开关；生成资源的登录和所有权隔离不受它影响。
+核心 Service 和新的业务 Service 实现 `CrudActions`，自行执行授权，不使用此旧控制器开关；生成资源的登录和所有权隔离不受它影响。
 
 ## 字段与生成选项
 
@@ -124,19 +131,23 @@ vendor/bin/ninex make:crud Category --framework=laravel --fields="name:string,ac
 
 Laravel 模板通过应用已有的认证 guard 获取用户，生成路由挂载对应认证中间件；ThinkPHP 模板从应用认证中间件提供的 `actor[id]` 获取用户身份。已有登录系统可以直接接入，具体方式见上面的框架接入说明。
 
-公开查询、管理员管理或团队共享需要不同的数据权限。按业务调整生成 Service 中的身份检查、`authorize` 回调和仓储 `scope`，以及路由上的认证中间件；改变数据归属规则时，还需同步调整 `owner_id` 的写入逻辑与表结构。仅移除路由认证中间件不会取消 Service 内的身份检查。当前生成器没有公开接口或管理员模式的一键开关。
+公开查询、管理员管理或团队共享需要不同的数据权限。按需覆盖 Service 的 `authorize()`、`scopeAccess()`、`creationDefaults()`，并调整路由上的认证中间件；改变数据归属规则时，还需同步调整 `owner_id` 的写入逻辑与表结构。仅移除路由认证中间件不会取消 Service 内的身份检查。当前生成器没有公开接口或管理员模式的一键开关。
 
-| 配置 | 用途 |
+默认只维护 `rules()` 中的验证规则和 `scopeQuery()` 中的业务过滤，不需要重复声明多份字段名单。基类自动处理字段默认值、授权、事务及保存/删除钩子的调用。
+
+| 修改目标 | 入口 |
 |---|---|
-| `writable` | 客户端可写字段 |
-| `readable` | 响应可见字段 |
-| `filters` / `sorts` | 可筛选、排序的列 |
-| `validate` | 必须提供的输入验证回调 |
-| `authorize` | 必须提供的授权回调，允许操作时返回 `true` |
-| 仓储 `scope` | 读取、更新、删除的数据可见范围 |
+| 表单规则 | `rules()` / `validateForm()` |
+| 表单到数据库字段的转换 | `saving()` |
+| 列表过滤 | `scopeQuery()` |
+| 保存、删除后的关联处理 | `saved()` / `deleted()` |
+| 特殊权限和数据范围 | 按需覆盖 `authorize()` / `scopeAccess()` |
+| 特殊输出、写入、分页限制 | 按需设置 `readable/writable/maxPageSize`，默认不生成 |
 
 分页示例：`filter[status]=0&sort=-id&page=1&page_size=15`。默认最多每页 100 条，保留零值与 false；核心也支持 null 筛选。
 分页返回 `data`、`total`、`page_size`、`current_page`、`total_pages`。更新后离开 scope 的记录会触发回滚并返回 404。
+
+默认规则、可选配置和修改示例见[业务 CRUD](GENERATED-CRUD.md)。
 
 列表在数据库中分页，只加载当前页。生成器创建 `owner_id + id` 联合索引，其他筛选和关联查询应按业务设计索引。
 角色、租户、库存和支付等规则应在应用服务中明确实现；通用 CRUD 不替代业务并发控制。
