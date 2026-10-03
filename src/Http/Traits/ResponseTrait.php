@@ -3,6 +3,8 @@
 namespace Ninex\Lib\Http\Traits;
 
 use Ninex\Lib\Enums\ErrorCode;
+use Ninex\Lib\Core\Page;
+use Ninex\Lib\Core\Result;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -40,6 +42,7 @@ trait ResponseTrait
     {
         // 处理不同类型的数据
         $responseData = match(true) {
+            $data instanceof Page => $data->toArray(),
             $data instanceof Model => $this->handleModel($data),
             $data instanceof AbstractPaginator => $this->handlePaginator($data),
             $data instanceof ResourceCollection => $this->handleResourceCollection($data),
@@ -80,7 +83,7 @@ trait ResponseTrait
     protected function error(
         ?string $message = null,
         ErrorCode|int $code = ErrorCode::SYSTEM,
-        int $statusCode = 200,
+        int $statusCode = 0,
         mixed $data = null
     ): JsonResponse {
         // 获取错误码的值
@@ -90,7 +93,7 @@ trait ResponseTrait
             'code' => $errorCode,
             'message' => $message ?? ($code instanceof ErrorCode ? $code->message() : '系统错误'),
             'data' => $data,
-        ], $statusCode);
+        ], $statusCode ?: (config('ninexlib.exceptions.legacy_http_200', false) ? 200 : ($errorCode >= 400 && $errorCode <= 599 ? $errorCode : 400)));
     }
 
     /**
@@ -112,6 +115,9 @@ trait ResponseTrait
             $data = array_merge($data, ['additional' => $paginator->additional]);
         }
 
+        if (!$paginator instanceof LengthAwarePaginator) {
+            $data['additional']['has_more'] = $paginator->hasMorePages();
+        }
         return $this->formatPaginatedData($data);
     }
 
@@ -124,13 +130,16 @@ trait ResponseTrait
         $additional = $collection->additional;
 
         if ($resource instanceof AbstractPaginator) {
+            if (!$resource instanceof LengthAwarePaginator) {
+                $additional['has_more'] = $resource->hasMorePages();
+            }
             return $this->formatPaginatedData(array_merge(
                 $resource->toArray(),
-                ['additional' => $additional]
+                ['data' => $collection->resolve(request()), 'additional' => $additional]
             ));
         }
 
-        return $collection->toArray(request());
+        return $collection->resolve(request());
     }
 
     /**
@@ -138,7 +147,7 @@ trait ResponseTrait
      */
     protected function handleJsonResource(JsonResource $resource): array
     {
-        return $resource->toArray(request());
+        return $resource->resolve(request());
     }
 
     /**
@@ -148,11 +157,13 @@ trait ResponseTrait
     {
         $paginationInfo = [];
         foreach ($this->paginationMap as $from => $to) {
-            $paginationInfo[$to] = intval($paginated[$from] ?? 0);
+            if (array_key_exists($from, $paginated)) {
+                $paginationInfo[$to] = (int) $paginated[$from];
+            }
         }
 
         return array_merge(
-            ['data' => $paginated['data']],
+            ['data' => $paginated['data'] ?? []],
             $paginationInfo,
             Arr::get($paginated, 'additional', [])
         );
@@ -163,11 +174,7 @@ trait ResponseTrait
      */
     protected function formatData($data, string $message, int $code): array
     {
-        return array_merge($this->responseFormat, [
-            'code' => $code,
-            'message' => $message,
-            'data' => ($data||is_numeric($data)) ? $data : $this->responseFormat['data'],
-        ], $this->debug());
+        return array_merge($this->responseFormat, Result::success($data, $message, $code), $this->debug());
     }
 
     /**
@@ -176,10 +183,10 @@ trait ResponseTrait
      */
     protected function debug()
     {
-        if (config('app.debug')) {
+        if (config('app.debug') && config('ninexlib.sql.enabled', false) && config('ninexlib.sql.expose', false)) {
             return [
                 'debug' => [
-                    'sql' => SqlRecord::$sql
+                    'sql' => app(SqlRecord::class)->all()
                 ]
             ];
         }

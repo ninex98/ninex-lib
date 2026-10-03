@@ -1,0 +1,11 @@
+<?php
+
+namespace {{namespace}}\Http\Controllers;
+
+use {{namespace}}\Services\{{name}}Service;
+use Ninex\Lib\Http\Controllers\LibController;
+
+class {{name}}Controller extends LibController
+{
+    protected ?string $serviceClass = {{name}}Service::class;
+}

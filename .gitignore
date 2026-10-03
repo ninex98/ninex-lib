@@ -1,5 +1,13 @@
-/vendor/
+vendor/
 composer.lock
 .idea/
 .vscode/
 .DS_Store
+
+.phpunit.cache/
+.phpunit.result.cache
+
+/build/
+
+# Local verification notes and working records
+/.local/

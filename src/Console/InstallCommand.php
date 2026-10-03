@@ -19,16 +19,21 @@ class InstallCommand extends Command
     /**
      * 执行命令
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('开始安装 NinexLib...');
 
         // 发布配置文件
-        $this->call('vendor:publish', [
+        $status = $this->call('vendor:publish', [
             '--tag' => 'ninexlib-config'
         ]);
 
+        if ($status !== self::SUCCESS) {
+            $this->error('配置发布失败，请检查上面的错误。');
+            return $status;
+        }
         $this->info('NinexLib 安装完成！');
-        $this->info('请检查并配置 config/ninexlib.php 文件');
+        $this->info('可直接使用默认配置；按应用需要调整 config/ninexlib.php。');
+        return self::SUCCESS;
     }
 }

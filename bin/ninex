@@ -1,0 +1,12 @@
+#!/usr/bin/env php
+<?php
+
+$autoload = $GLOBALS['_composer_autoload_path'] ?? null;
+foreach ([$autoload, dirname(__DIR__).'/vendor/autoload.php', dirname(__DIR__, 3).'/autoload.php'] as $candidate) {
+    if ($candidate && is_file($candidate)) { require $candidate; break; }
+}
+if (!class_exists(\Ninex\Lib\Scaffolding\ConsoleApplication::class)) {
+    fwrite(STDERR, "Run composer install before using ninex.\n");
+    exit(1);
+}
+exit((new \Ninex\Lib\Scaffolding\ConsoleApplication())->run(array_slice($argv, 1), static fn (string $line) => fwrite(STDOUT, $line.PHP_EOL)));

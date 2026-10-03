@@ -2,7 +2,6 @@
 
 namespace Ninex\Lib\Console;
 
-
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Ninex\Lib\Traits\Database\WithDbTransaction;
@@ -26,7 +25,7 @@ abstract class LibCommand extends Command
     /**
     * 是否自动使用事务
     */
-   protected bool $useTransaction = false;
+    protected bool $useTransaction = false;
 
     /**
      * 开始时间
@@ -48,9 +47,8 @@ abstract class LibCommand extends Command
 
         try {
             if ($this->useTransaction) {
-                $this->beforeTransaction(fn() => $this->beforeExecute())
-                     ->afterTransaction(fn($result) => $this->afterExecute($result))
-                     ->onTransactionError(fn($e) => $this->handleError($e));
+                $this->beforeTransaction(fn () => $this->beforeExecute())
+                     ->afterTransaction(fn ($result) => $this->afterExecute($result));
 
                 return $this->transaction(function () {
                     return $this->process();
@@ -130,21 +128,10 @@ abstract class LibCommand extends Command
         $table->render();
     }
 
-    /**
-     * 带进度条的批量处理
-     * @param \Illuminate\Support\Collection|array|int $totalSteps
-     * @param callable $callback
-     * @return mixed
-     */
-    public function withProgressBar($totalSteps, callable $callback)
-    {
-        return parent::withProgressBar($totalSteps, $callback);
-    }
-
     // 如果需要扩展进度条功能，可以添加新的方法
     protected function withCustomProgressBar(iterable $items, callable $callback): void
     {
-        $count = is_countable($items) ? count($items) : null;
+        $count = is_countable($items) ? count($items) : 0;
         $bar = $this->output->createProgressBar($count);
 
         foreach ($items as $item) {
@@ -161,7 +148,7 @@ abstract class LibCommand extends Command
      */
     protected function confirmToProceed(string $warning = 'Application In Production!'): bool
     {
-        if ($this->option('force')) {
+        if ($this->getDefinition()->hasOption('force') && $this->option('force')) {
             return true;
         }
 

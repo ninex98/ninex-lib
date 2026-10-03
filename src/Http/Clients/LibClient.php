@@ -3,7 +3,6 @@
 namespace Ninex\Lib\Http\Clients;
 
 use GuzzleHttp\Client;
-use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Arr;
 use Ninex\Lib\Exceptions\ServiceException;
@@ -13,7 +12,7 @@ abstract class LibClient
     /**
      * HTTP 客户端实例
      */
-    protected ClientInterface $client;
+    protected Client $client;
 
     /**
      * 基础配置
@@ -23,7 +22,7 @@ abstract class LibClient
         'timeout' => 30,
         'connect_timeout' => 10,
         'http_errors' => false,
-        'verify' => false,
+        'verify' => true,
     ];
 
     /**
@@ -37,9 +36,12 @@ abstract class LibClient
     /**
      * 构造函数
      */
-    public function __construct(array $config = [], ?ClientInterface $client = null)
+    public function __construct(array $config = [], ?Client $client = null)
     {
-        $this->config = array_merge($this->config, $config);
+        if ($client === null && !class_exists(Client::class)) {
+            throw new \LogicException('LibClient requires guzzlehttp/guzzle:^7.0. Install that optional dependency with Composer.');
+        }
+        $this->config = array_merge($this->config, (array) config('ninexlib.http', []), $config);
         $this->client = $client ?? new Client($this->config);
     }
 
@@ -70,7 +72,17 @@ abstract class LibClient
 
             // 获取响应内容
             $contents = $response->getBody()->getContents();
-            $result = json_decode($contents, true);
+            if ($response->getStatusCode() === 204 || $method === 'HEAD') {
+                return [];
+            }
+            try {
+                $result = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                throw new ServiceException('上游返回了无效 JSON', 502, null, $e);
+            }
+            if (!is_array($result)) {
+                throw new ServiceException('上游 JSON 必须为对象或数组', 502);
+            }
 
             // 检查响应
             $this->checkResponse($result, $response->getStatusCode());
@@ -147,10 +159,13 @@ abstract class LibClient
 
         // 检查业务状态码（根据实际 API 响应格式调整）
         $code = Arr::get($result, 'code', 0);
-        if ($code !== 0) {
+        if (!is_int($code) && !(is_string($code) && preg_match('/^-?[0-9]+$/D', $code))) {
+            throw new ServiceException('上游业务状态码格式错误', 502);
+        }
+        if ((int) $code !== 0) {
             throw new ServiceException(
                 Arr::get($result, 'message', '业务处理失败'),
-                $code
+                (int) $code
             );
         }
     }
@@ -162,7 +177,9 @@ abstract class LibClient
     {
         return new ServiceException(
             '请求异常：' . $e->getMessage(),
-            $e->getCode() ?: 500
+            502,
+            null,
+            $e
         );
     }
 

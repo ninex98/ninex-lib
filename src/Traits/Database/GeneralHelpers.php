@@ -15,6 +15,8 @@ trait GeneralHelpers
      */
     protected ?string $modelClass = null;
 
+    protected array $allowedFilters = [];
+
     /**
      * 获取当前模型类名
      *
@@ -23,7 +25,7 @@ trait GeneralHelpers
     public function setModel(): string
     {
         // 如果子类定义了 modelClass，直接使用
-        if ($this->modelClass && class_exists($this->modelClass)) {
+        if ($this->modelClass && is_subclass_of($this->modelClass, Model::class)) {
             return $this->modelClass;
         }
 
@@ -39,7 +41,7 @@ trait GeneralHelpers
 
         foreach ($namespaces as $namespace) {
             $modelClass = $namespace . $modelName;
-            if (class_exists($modelClass)) {
+            if (is_subclass_of($modelClass, Model::class)) {
                 return $modelClass;
             }
         }
@@ -77,15 +79,14 @@ trait GeneralHelpers
         ?string  $message = null,
         array    $with = [],
         ?Builder $builder = null
-    ): Model
-    {
+    ): Model {
         $builder = $builder ?? $this->query();
 
         $result = $builder->with($with)->find($id);
 
         if (!$result) {
             throw $this->createException(
-                $message ?? '数据不存在',
+                $message ?: '数据不存在',
                 404
             );
         }
@@ -106,8 +107,7 @@ trait GeneralHelpers
         ?string  $message = null,
         array    $with = [],
         ?Builder $builder = null
-    ): Model
-    {
+    ): Model {
         $builder = $builder ?? $this->query();
 
         $result = $builder
@@ -117,7 +117,7 @@ trait GeneralHelpers
 
         if (!$result) {
             throw $this->createException(
-                $message ?? '数据不存在',
+                $message ?: '数据不存在',
                 404
             );
         }
@@ -136,24 +136,17 @@ trait GeneralHelpers
         array    $data,
         ?string  $message = null,
         ?Builder $builder = null
-    ): Model
-    {
+    ): Model {
         $builder = $builder ?? $this->query();
-
-        $this->saving($data);
-
-        $result = $builder->create($data);
-
-        if (!$result) {
-            throw $this->createException(
-                $message ?? '创建失败',
-                422
-            );
-        }
-
-        $this->saved($result);
-
-        return $result;
+        return $builder->getModel()->getConnection()->transaction(function () use ($data, $message, $builder) {
+            $this->saving($data);
+            $result = $builder->create($data);
+            if (!$result->exists) {
+                throw $this->createException($message ?: '创建失败', 422);
+            }
+            $this->saved($result);
+            return $result;
+        });
     }
 
     /**
@@ -170,23 +163,17 @@ trait GeneralHelpers
         array    $data,
         ?string  $message = null,
         ?Builder $builder = null
-    ): Model
-    {
-
-        $this->saving($data,$id);
-
-        $model = $this->find($id, $message, [], $builder);
-
-        if (!$model->update($data)) {
-            throw $this->createException(
-                $message ?? '更新失败',
-                422
-            );
-        }
-
-        $this->saved($model, true);
-
-        return $model;
+    ): Model {
+        $builder = $builder ?? $this->query();
+        return $builder->getModel()->getConnection()->transaction(function () use ($id, $data, $message, $builder) {
+            $model = $this->find($id, $message, [], $builder);
+            $this->saving($data, $id);
+            if (!$model->update($data)) {
+                throw $this->createException($message ?: '更新失败', 422);
+            }
+            $this->saved($model, true);
+            return $model;
+        });
     }
 
     /**
@@ -201,20 +188,16 @@ trait GeneralHelpers
         string   $id,
         ?string  $message = null,
         ?Builder $builder = null
-    ): bool
-    {
-        $model = $this->find($id, $message, [], $builder);
-
-        if (!$model->delete()) {
-            throw $this->createException(
-                $message ?? '删除失败',
-                422
-            );
-        }
-
-        $this->deleted($id);
-
-        return true;
+    ): bool {
+        $builder = $builder ?? $this->query();
+        return $builder->getModel()->getConnection()->transaction(function () use ($id, $message, $builder) {
+            $model = $this->find($id, $message, [], $builder);
+            if (!$model->delete()) {
+                throw $this->createException($message ?: '删除失败', 422);
+            }
+            $this->deleted($id);
+            return true;
+        });
     }
 
     /**
@@ -264,7 +247,6 @@ trait GeneralHelpers
     public function validateStore(array $data, string $message = '')
     {
         $this->validateForm($data);
-
         return $this->create($data, $message);
     }
 
@@ -277,7 +259,6 @@ trait GeneralHelpers
     public function validateUpdate(string $id, array $fields, string $message = '')
     {
         $this->validateForm($fields, $id);
-
         return $this->update($id, $fields, $message);
     }
 
@@ -286,7 +267,7 @@ trait GeneralHelpers
      */
     public function validateForm(array $data, ?string $id = null): void
     {
-        // 子类实现具体验证逻辑
+        // Optional input validation hook. Persistence methods also accept already-normalized data.
     }
 
     /**
@@ -298,8 +279,7 @@ trait GeneralHelpers
         array    $with = [],
         array    $orderBy = ['id' => 'desc'],
         ?Builder $builder = null
-    )
-    {
+    ) {
         $builder = $builder ?? $this->query();
         $query = $builder->with($with);
 
@@ -310,9 +290,8 @@ trait GeneralHelpers
         foreach ($orderBy ?: [] as $column => $direction) {
             $query->orderBy($column, $direction);
         }
-        $perPage = $conditions['page_size'] ?? 15;
-
-        return $query->paginate($perPage);
+        $page = \Ninex\Lib\Core\Query::fromArray(Arr::only($conditions, ['page', 'page_size']), [], [], config('ninexlib.pagination.max_page_size', 100));
+        return $query->paginate($page->pageSize, ['*'], 'page', $page->page);
     }
 
     /**
@@ -323,8 +302,7 @@ trait GeneralHelpers
         array    $with = [],
         array    $orderBy = ['id' => 'desc'],
         ?Builder $builder = null
-    )
-    {
+    ) {
         $builder = $builder ?? $this->query();
         $query = $builder->with($with);
 
@@ -348,11 +326,16 @@ trait GeneralHelpers
             return false;
         }
 
+        if ($chunkSize < 1) {
+            throw new \InvalidArgumentException('chunkSize must be positive.');
+        }
         $chunks = array_chunk($items, $chunkSize);
 
-        foreach ($chunks as $chunk) {
-            $this->model()->insert($chunk);
-        }
+        $this->model()->getConnection()->transaction(function () use ($chunks) {
+            foreach ($chunks as $chunk) {
+                $this->model()->insert($chunk);
+            }
+        });
 
         return true;
     }
@@ -362,7 +345,14 @@ trait GeneralHelpers
      */
     public function scopeQuery(Builder $query, array $conditions)
     {
-        foreach (array_filter(Arr::except($conditions, ['page', 'page_size'])) as $key => $value) {
+        $conditions = Arr::except($conditions, ['page', 'page_size']);
+        if (array_diff(array_keys($conditions), $this->allowedFilters)) {
+            throw $this->createException('不允许的筛选字段', 422);
+        }
+        foreach ($this->presentConditions($conditions) as $key => $value) {
+            if (!is_scalar($value)) {
+                throw $this->createException('筛选值格式错误', 422);
+            }
             $query->where($key, $value);
         }
     }
@@ -374,22 +364,25 @@ trait GeneralHelpers
 
     public function scopeWhereIn(Builder $query, array $conditions)
     {
-        foreach (array_filter($conditions) as $key => $value) {
+        foreach ($this->presentConditions($conditions) as $key => $value) {
             $query->whereIn($key, $value);
         }
     }
 
     public function scopeWhereLike(Builder $query, array $conditions)
     {
-        foreach (array_filter($conditions) as $key => $value) {
+        foreach ($this->presentConditions($conditions) as $key => $value) {
             $query->where($key, "like", "%{$value}%");
         }
     }
 
     public function scopeWhereBetween(Builder $query, array $conditions)
     {
-        foreach (array_filter($conditions) as $key => $value) {
-            $value = is_string($value) ? explode(',', $value) : [];
+        foreach ($this->presentConditions($conditions) as $key => $value) {
+            $value = is_string($value) ? explode(',', $value) : $value;
+            if (!is_array($value) || count($value) !== 2 || !$value[0] || !$value[1]) {
+                throw $this->createException('日期范围需要两个有效日期', 422);
+            }
             $query->whereBetween($key, [
                 Carbon::parse(Arr::first($value))->startOfDay()->toDateTimeString(),
                 Carbon::parse(Arr::last($value))->endOfDay()->toDateTimeString()
@@ -399,15 +392,19 @@ trait GeneralHelpers
 
     public function scopeWhereJsonContains(Builder $query, array $conditions)
     {
-        foreach (array_filter($conditions) as $key => $value) {
+        foreach ($this->presentConditions($conditions) as $key => $value) {
             $query->whereJsonContains($key, $value);
         }
     }
 
     public function scopeWhereInSet(Builder $query, array $conditions)
     {
-        foreach (array_filter($conditions) as $key => $value) {
-            $query->whereRaw('FIND_IN_SET(?, ' . $key . ')', [$value]);
+        foreach ($this->presentConditions($conditions) as $key => $value) {
+            \Ninex\Lib\Support\BulkWriter::identifier($key);
+            if ($query->getConnection()->getDriverName() !== 'mysql') {
+                throw new \LogicException('FIND_IN_SET requires MySQL.');
+            }
+            $query->whereRaw('FIND_IN_SET(?, ' . $query->getQuery()->getGrammar()->wrap($key) . ')', [$value]);
         }
     }
 
@@ -496,6 +493,11 @@ trait GeneralHelpers
     public function deleted($ids)
     {
 
+    }
+
+    private function presentConditions(array $conditions): array
+    {
+        return array_filter($conditions, static fn ($value) => $value !== null && $value !== '');
     }
 
 }

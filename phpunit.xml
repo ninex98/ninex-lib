@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" colors="true" cacheDirectory=".phpunit.cache/core" failOnWarning="true" failOnRisky="true"><testsuites><testsuite name="Core"><directory>tests/Core</directory></testsuite><testsuite name="Generator"><directory>tests/Unit</directory></testsuite></testsuites></phpunit>

@@ -1,6 +1,6 @@
 {
     "name": "ninex/lib",
-    "description": "基础封装功能",
+    "description": "Framework-independent PHP CRUD core with optional Laravel and ThinkPHP integration",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -10,13 +10,11 @@
         }
     ],
     "require": {
-        "php": "^8.1",
-        "laravel/framework": "^10.0|^11.0|^12.0",
-        "guzzlehttp/guzzle": "^7.0"
+        "php": "^8.1"
     },
     "require-dev": {
-        "orchestra/testbench": "^8.0|^9.0|^10.0",
-        "phpunit/phpunit": "^10.0|^11.0"
+        "laravel/pint": "^1.0",
+        "phpunit/phpunit": "^10.5 || ^11.5"
     },
     "autoload": {
         "psr-4": {
@@ -25,7 +23,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Ninex\\Lib\\Tests\\": "tests/"
+            "Ninex\\Lib\\Core\\Tests\\": "tests/Core/",
+            "Ninex\\Lib\\Tests\\": "tests/Unit/"
         }
     },
     "extra": {
@@ -33,11 +32,32 @@
             "providers": [
                 "Ninex\\Lib\\LibServiceProvider"
             ]
+        },
+        "think": {
+            "services": [
+                "Ninex\\Lib\\ThinkPhp\\ServiceProvider"
+            ]
         }
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
     "config": {
         "sort-packages": true
-    }
+    },
+    "scripts": {
+        "test": "@php vendor/bin/phpunit",
+        "lint": "@php vendor/bin/pint --test src config tests/Core tests/Unit tests/Laravel tests/ThinkPhp examples tools bin",
+        "format": "@php vendor/bin/pint src config tests/Core tests/Unit tests/Laravel tests/ThinkPhp examples tools bin",
+        "build-package": "@php tools/build-package.php"
+    },
+    "suggest": {
+        "laravel/framework": "Laravel 10–13 integration (use the PHP version required by your Laravel release).",
+        "topthink/framework": "ThinkPHP 8.1 integration.",
+        "topthink/think-orm": "ThinkORM 3 or 4 repository.",
+        "guzzlehttp/guzzle": "Guzzle 7 HTTP client integration.",
+        "ext-tokenizer": "Required by the CRUD generator for PHP syntax validation."
+    },
+    "bin": [
+        "bin/ninex"
+    ]
 }

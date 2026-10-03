@@ -13,7 +13,10 @@ use Throwable;
 
 abstract class LibJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
     use WithDbTransaction;
 
     /**
@@ -56,9 +59,9 @@ abstract class LibJob implements ShouldQueue
     public function handle()
     {
         // 设置事务钩子
-        $this->beforeTransaction(fn() => $this->beforeExecute())
-            ->afterTransaction(fn($result) => $this->afterExecute($result))
-            ->onTransactionError(fn($e) => $this->handleFailure($e));
+        $this->beforeTransaction(fn () => $this->beforeExecute())
+            ->afterTransaction(fn ($result) => $this->afterExecute($result))
+            ->onTransactionError(fn ($e) => $this->handleFailure($e));
 
         // 直接使用 transaction
         return $this->transaction(function () {
@@ -125,7 +128,7 @@ abstract class LibJob implements ShouldQueue
      */
     protected function determineQueue(): string
     {
-        return property_exists($this, 'queue') ? $this->queue : 'default';
+        return $this->queue ?? 'default';
     }
 
     /**
@@ -207,7 +210,7 @@ abstract class LibJob implements ShouldQueue
     }
 
     /**
-     * 在事务回滚后分发任务
+     * 在 HTTP 响应发送后分发任务（不是事务回滚）
      */
     public static function dispatchAfterResponse(...$args): \Illuminate\Foundation\Bus\PendingDispatch
     {

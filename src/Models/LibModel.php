@@ -3,154 +3,147 @@
 namespace Ninex\Lib\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
+use Ninex\Lib\Support\BulkWriter;
 
 abstract class LibModel extends Model
 {
+    // Preserve the legacy model contract; HTTP input must be selected/validated by the application.
     protected $guarded = ['id'];
-
-    protected $casts = [
-        'created_at' => 'datetime:Y-m-d H:i:s',
-        'updated_at' => 'datetime:Y-m-d H:i:s',
-    ];
+    protected $casts = ['created_at' => 'datetime:Y-m-d H:i:s', 'updated_at' => 'datetime:Y-m-d H:i:s'];
 
     protected static function boot()
     {
         parent::boot();
-
-        // 如果你不希望 Laravel 自动维护 created_at 和 updated_at 字段，可以取消以下行的注释
-        // static::unsetEventDispatcher();
+        $invalidate = function (self $model) {
+            if (config('ninexlib.model_cache.enabled', false)) {
+                $key = $model->modelCacheKey($model->getKey());
+                $model->getConnection()->afterCommit(function () use ($key) {
+                    try {
+                        cache()->forget($key);
+                    } catch (\Throwable $e) {
+                        // The database is already committed. A cache outage must not retry the write.
+                        try {
+                            report($e);
+                        } catch (\Throwable) {
+                        }
+                    }
+                });
+            }
+        };
+        static::saved($invalidate);
+        static::deleted($invalidate);
     }
 
-    /**
-     * 安全的事务处理
-     * @throws \Throwable
-     */
     protected static function transaction(callable $callback)
     {
-        try {
-            DB::beginTransaction();
-            $result = $callback();
-            DB::commit();
-            return $result;
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            throw $e;
-        }
+        return (new static())->getConnection()->transaction($callback);
     }
 
-    /**
-     * 批量插入并忽略重复
-     */
     public static function insertIgnore(array $values)
     {
-        if (empty($values)) {
-            return true;
-        }
-
-        $table = (new static)->getTable();
-
-        return DB::table($table)->insertOrIgnore($values);
+        return $values ? (new static())->newQuery()->insertOrIgnore($values) : true;
     }
 
-    /**
-     * 批量更新
-     */
+    /** Bypasses model events, mutators and scopes; pass only trusted application data. */
     public static function batchUpdate(array $values, string $index)
     {
-        if (empty($values)) {
+        if (!$values) {
             return true;
         }
-
-        $table = (new static)->getTable();
-        $first = reset($values);
-
-        $columns = array_keys($first);
-
-        $cases = [];
-        $ids = [];
-
-        foreach ($values as $value) {
-            $id = $value[$index];
-            $ids[] = $id;
-
-            foreach ($columns as $column) {
-                if ($column === $index) {
-                    continue;
-                }
-                $cases[$column][] = "WHEN {$id} THEN '{$value[$column]}'";
-            }
+        $model = new static();
+        if (config('ninexlib.model_cache.enabled', false)) {
+            throw new \LogicException('batchUpdate bypasses cache invalidation. Update individual models when model caching is enabled.');
         }
-
-        $cases = array_map(function ($column, $updates) use ($index) {
-            $updates = implode(' ', $updates);
-            return "{$column} = CASE {$index} {$updates} ELSE {$column} END";
-        }, array_keys($cases), $cases);
-
-        $ids = implode(',', $ids);
-        $cases = implode(', ', $cases);
-
-        return DB::update("UPDATE {$table} SET {$cases} WHERE {$index} IN ({$ids})");
+        return BulkWriter::update($model->getConnection(), $model->getTable(), $values, $index);
     }
 
-    /**
-     * 批量删除并触发模型事件
-     */
     public static function massDelete(array $ids): int
     {
-        if (empty($ids)) {
+        if (!$ids) {
             return 0;
         }
-
-        $models = static::whereIn((new static)->getKeyName(), $ids)->get();
-
         $count = 0;
-        foreach ($models as $model) {
-            if ($model->delete()) {
-                $count++;
-            }
-        }
-
+        (new static())->getConnection()->transaction(function () use ($ids, &$count) {
+            static::query()->whereKey($ids)->chunkById(200, function ($models) use (&$count) {
+                foreach ($models as $model) {
+                    if ($model->delete()) {
+                        $count++;
+                    }
+                }
+            });
+        });
         return $count;
     }
 
-    /**
-     * 获取单条记录，支持缓存
-     */
+    /** Override with a server-derived tenant/visibility context if query scopes vary by request. */
+    protected function cacheContext(): string
+    {
+        return '';
+    }
+
+    protected function modelCacheKey($id): string
+    {
+        $connection = $this->getConnection();
+        return 'ninex:model:'.hash('sha256', json_encode([static::class, $connection->getName(), $connection->getDatabaseName(), $this->getTable(), $this->cacheContext(), (string) $id], JSON_THROW_ON_ERROR));
+    }
+
     public static function findWithCache($id, $ttl = 3600)
     {
-        $key = static::class . ':' . $id;
-
-        return cache()->remember($key, $ttl, function () use ($id) {
+        $model = new static();
+        if (!config('ninexlib.model_cache.enabled', false) || $model->getConnection()->transactionLevel() > 0) {
             return static::find($id);
-        });
+        }
+        // Keep database failures outside the cache exception boundary.
+        try {
+            $cached = cache()->get($model->modelCacheKey($id));
+        } catch (\Throwable $e) {
+            try {
+                report($e);
+            } catch (\Throwable) {
+            } return static::find($id);
+        }
+        if ($cached !== null) {
+            return $cached;
+        }
+        $result = static::find($id);
+        if ($result !== null) {
+            try {
+                cache()->put($model->modelCacheKey($id), $result, $ttl);
+            } catch (\Throwable $e) {
+                try {
+                    report($e);
+                } catch (\Throwable) {
+                }
+            }
+        }
+        return $result;
     }
 
-    /**
-     * 清除指定ID的缓存
-     * @throws \Exception
-     */
     public static function forgetCache($id): bool
     {
-        $key = static::class . ':' . $id;
-        return cache()->forget($key);
+        return cache()->forget((new static())->modelCacheKey($id));
     }
 
-    /**
-     * 分页查询的简单封装
-     */
+    /** @deprecated Historical 1.x name: still returns totals. Use paginateWithoutTotal to skip COUNT. */
     public static function simplePaginate(array $where = [], array $order = [], int $perPage = 15)
     {
-        $query = static::query();
+        return static::paginationQuery($where, $order, $perPage)->paginate($perPage);
+    }
 
-        foreach ($where as $key => $value) {
-            $query->where($key, $value);
+    public static function paginateWithoutTotal(array $where = [], array $order = [], int $perPage = 15)
+    {
+        return static::paginationQuery($where, $order, $perPage)->simplePaginate($perPage);
+    }
+
+    private static function paginationQuery(array $where, array $order, int $perPage)
+    {
+        if ($perPage < 1 || $perPage > config('ninexlib.pagination.max_page_size', 100)) {
+            throw new \InvalidArgumentException('Invalid page size.');
         }
-
+        $query = static::query()->where($where);
         foreach ($order as $key => $value) {
             $query->orderBy($key, $value);
         }
-
-        return $query->paginate($perPage);
+        return $query;
     }
 }
